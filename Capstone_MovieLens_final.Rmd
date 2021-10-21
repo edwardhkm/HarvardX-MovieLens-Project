@@ -3,7 +3,7 @@ title: |
     <Center>HarvardX: PH125.9x Data Science: Capstone course</Center>
     <Center>Capstone project MovieLens</Center>
 author: "Edward Ho"
-date: "2021/10/15"
+date: "2021/10/25"
 output: pdf_document
 ---
 
@@ -60,8 +60,6 @@ dl <- tempfile()
 tmp_dir <- tempdir()
 dirname(tmp_dir)
 #### Read local file , don't need to download and save some time ####
-# download.file("file:///C:/Work_proj/workspace_R/capstone_movielens/ml-10m.zip", dl)
-# download.file("file:///d:/edward_ho/edx_data_science_cert/capstone/ml-10m.zip", dl)
 download.file("http://files.grouplens.org/datasets/movielens/ml-10m.zip", dl)
 
 ratings <- fread(text = gsub("::", "\t", readLines(unzip(dl, "ml-10M100K/ratings.dat"))),
