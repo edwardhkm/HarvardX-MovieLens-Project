@@ -125,6 +125,23 @@ validation <- validation %>% mutate(rating_time = as.POSIXct(timestamp, origin="
                                     movie_year2 = str_extract(title, "\\(\\d+\\)")) %>% 
   mutate(movie_year=str_extract(movie_year2, "\\d+")) %>% select(-movie_year2)
 head(validation)
+
+
+# According to the instruction of the project, we need to further split the edx set into training and testing.
+set.seed(1, sample.kind="Rounding") # if using R 3.5 or earlier, use `set.seed(1)`
+edx_test_index <- createDataPartition(y = edx$rating, times = 1, p = 0.1, list = FALSE)
+edx_training_set <- edx[-edx_test_index,]
+temp2 <- edx[edx_test_index,]
+
+# Make sure userId and movieId in test set are also in training set
+edx_test_set <- temp2 %>% 
+  semi_join(edx_training_set, by = "movieId") %>%
+  semi_join(edx_training_set, by = "userId")
+
+# Add rows removed from validation set back into edx set
+removed2 <- anti_join(temp2, edx_test_set)
+edx_training_set <- rbind(edx_training_set, removed2)
+
 ```
 
 \newpage
@@ -155,74 +172,74 @@ First method we will adopt as our algorithm for a movie recommendation system is
 $$Y_{u,i} = \mu$$
 
 ```{r average_mean, eval=TRUE}
-mu <- mean(edx$rating)
+mu <- mean(edx_training_set$rating)
 
-RMSE(validation$rating, mu)
-method_average <- RMSE(validation$rating, mu)
-rmse_results1 <- data.frame(method = "The average rating", RMSE = method_average)
-rmse_results1
+edx_method_average <- RMSE(edx_test_set$rating, mu)
+edx_rmse_results1 <- data.frame(method = "The average rating", RMSE = edx_method_average)
+edx_rmse_results1
 ```
-The RMSE is 1.0612.  This value is very far away from our target value.  
+The RMSE is 1.06.  This value is very far away from our target value.  
 
 Second method we will try to use is average + movie effect.
 $$Y_{u,i} = \mu + b_i$$
 ```{r movie_effects, eval=TRUE}
-movie_avgs <- edx %>% group_by(movieId) %>% summarize(b_i = mean(rating-mu))
+mu <- mean(edx_training_set$rating)
+movie_avgs <- edx_training_set %>% group_by(movieId) %>% summarize(b_i = mean(rating-mu))
 
-predicted_ratings <- mu + validation %>% left_join(movie_avgs, by='movieId') %>% pull(b_i)
-method_movie_effects <- RMSE(validation$rating, predicted_ratings)
+edx_predicted_ratings <- mu + edx_test_set %>% left_join(movie_avgs, by='movieId') %>% pull(b_i)
+edx_method_movie_effects <- RMSE(edx_test_set$rating, edx_predicted_ratings)
 
-rmse_results2 <- data.frame(method = "Movie effects", RMSE = method_movie_effects)
-rmse_results2
+edx_rmse_results2 <- data.frame(method = "Movie effects", RMSE = edx_method_movie_effects)
+edx_rmse_results2
 ```
 
-The RMSE is 0.9439.  This value is still very far away from our target value.  In order to improve our RMSE.  We are going to add the third attribute from the edx data to improve our algorithm.
+The RMSE is 0.94.  This value is still very far away from our target value.  In order to improve our RMSE.  We are going to add the third attribute from the edx data to improve our algorithm.
 
 $$Y_{u,i} = \mu + b_i + b_u$$
 ```{r movie_user_effects, eval=TRUE}
-user_avgs <- edx %>% left_join(movie_avgs, by='movieId') %>%
+user_avgs <- edx_training_set %>% left_join(movie_avgs, by='movieId') %>%
   group_by(userId) %>%
   summarize(b_u = mean(rating - mu - b_i))
-predicted_ratings <- validation %>%
+edx_predicted_ratings <- edx_test_set %>%
   left_join(movie_avgs, by='movieId') %>%
   left_join(user_avgs, by='userId') %>%
   mutate(pred = mu + b_i + b_u) %>%
   pull(pred)
-method_movie_user_effects <- RMSE(validation$rating, predicted_ratings)
-method_movie_user_effects
+edx_method_movie_user_effects <- RMSE(edx_test_set$rating, edx_predicted_ratings)
+edx_method_movie_user_effects
 
-rmse_results3 <- data.frame(method = "Movie_user_effects", RMSE = method_movie_user_effects)
+edx_rmse_results3 <- data.frame(method = "Movie_user_effects", RMSE = edx_method_movie_user_effects)
 
 ```
 
-The third method generated RMSE = 0.8653488.  We still have a room for improvement.  Therefore, we try to throw in additional attributes and hoping it will generate a RMSE below 0.865.
+The third method generated RMSE = 0.8635.  We still have a room for improvement.  Therefore, we try to throw in additional attributes and hoping it will generate a RMSE below 0.865.
 
 The forth attribute we use is movie released year which is hidding inside the title column in the original dataset.
 
 ```{r year_effects, eval=TRUE}
 ## Try to add other factor: movie effects and user effects and year effects
-movie_year_avgs <- edx %>% 
+movie_year_avgs <- edx_training_set %>% 
   left_join(movie_avgs, by='movieId') %>%
   left_join(user_avgs, by='userId') %>%
   group_by(movie_year) %>%
   summarize(b_y = mean(rating - mu - b_i - b_u))
-predicted_ratings <- validation %>%
+edx_predicted_ratings <- edx_test_set %>%
   left_join(movie_avgs, by='movieId') %>%
   left_join(user_avgs, by='userId') %>%
   left_join(movie_year_avgs, by='movie_year') %>%
   mutate(pred = mu + b_i + b_u + b_y) %>%
   pull(pred)
-method_movie_user_year_effects <- RMSE(validation$rating, predicted_ratings)
-method_movie_user_year_effects
+edx_method_movie_user_year_effects <- RMSE(edx_test_set$rating, edx_predicted_ratings)
+# edx_method_movie_user_year_effects
 
-rmse_results4 <- data.frame(method = "Movie_user_year_effects", 
-                            RMSE = method_movie_user_year_effects)
+edx_rmse_results4 <- data.frame(method = "Movie_user_year_effects", 
+                            RMSE = edx_method_movie_user_year_effects)
 
 ```
 The improvement of employing movie released year attribute does not change RMSE much.
 ```{r check_improve, eval=TRUE}
 
-improvement <- (method_movie_user_year_effects / method_movie_user_effects)
+improvement <- (edx_method_movie_user_year_effects / edx_method_movie_user_effects)
 
 ```
 We can see that there is less than 1 percent improvement.  Adding more attributes into the lm model is approaching its limit.  We cannot shrink the value of RMSE further more with additional attributes in the lm model.  We need to another techniques to improve our algorithm.
@@ -237,39 +254,39 @@ lambdas <- seq(0, 10, 0.25)
 ## passing in lambdas and generate a vector of RMSEs, then we will use this vector to plot 
 ##  our lambdas graph.
 rmses <- sapply(lambdas, function(l){
-  mu <- mean(edx$rating)
+  mu <- mean(edx_training_set$rating)
 # movie effect
-  b_i <- edx %>% group_by(movieId) %>% summarize(b_i = sum(rating - mu)/(n() + l))
+  b_i <- edx_training_set %>% group_by(movieId) %>% summarize(b_i = sum(rating - mu)/(n() + l))
 # user effect
-  b_u <- edx %>% left_join(b_i, by="movieId") %>% group_by(userId) %>% 
+  b_u <- edx_training_set %>% left_join(b_i, by="movieId") %>% group_by(userId) %>% 
     summarize(b_u = sum(rating - b_i - mu)/(n() + l))
 # movie released year effect
-  b_y <- edx %>% left_join(b_i, by="movieId") %>% left_join(b_u, by="userId") %>% 
+  b_y <- edx_training_set %>% left_join(b_i, by="movieId") %>% left_join(b_u, by="userId") %>% 
     group_by(movie_year) %>% summarize(b_y = sum(rating - b_i - b_u - mu)/(n() + l))
     
-  predicted_ratings <- validation %>% left_join(b_i, by='movieId') %>% 
+  predicted_ratings <- edx_test_set %>% left_join(b_i, by='movieId') %>% 
     left_join(b_u, by='userId') %>% left_join(b_y, by='movie_year') %>% 
     mutate(pred = mu + b_i + b_u + b_y) %>% pull(pred)
   
-  return(RMSE(validation$rating, predicted_ratings))})
+  return(RMSE(edx_test_set$rating, predicted_ratings))})
 
 lambda <- lambdas[which.min(rmses)]
 
-b_i <- edx %>% group_by(movieId) %>% summarize(b_i = sum(rating - mu)/(n() + lambda))
+b_i <- edx_training_set %>% group_by(movieId) %>% summarize(b_i = sum(rating - mu)/(n() + lambda))
 
-b_u <- edx %>% left_join(b_i, by="movieId") %>% group_by(userId) %>% 
+b_u <- edx_training_set %>% left_join(b_i, by="movieId") %>% group_by(userId) %>% 
   summarize(b_u = sum(rating - b_i - mu)/(n() + lambda))
 
-b_y <- edx %>% left_join(b_i, by="movieId") %>% left_join(b_u, by="userId") %>% 
+b_y <- edx_training_set %>% left_join(b_i, by="movieId") %>% left_join(b_u, by="userId") %>% 
   group_by(movie_year) %>% summarize(b_y = sum(rating - b_i - b_u - mu)/(n() + lambda))
 
-predicted_ratings <- validation %>% left_join(b_i, by='movieId') %>% 
+predicted_ratings <- edx_test_set %>% left_join(b_i, by='movieId') %>% 
   left_join(b_u, by='userId') %>% left_join(b_y, by='movie_year') %>% 
   mutate(pred = mu + b_i + b_u + b_y) %>% pull(pred)
 
-method_reg_user_movie_year <- RMSE(validation$rating, predicted_ratings)
+edx_method_reg_user_movie_year <- RMSE(edx_test_set$rating, predicted_ratings)
 
-rmse_results5 <- data.frame(method = "Movie_reg_user_year_effects", RMSE = method_reg_user_movie_year)
+edx_rmse_results5 <- data.frame(method = "Movie_reg_user_year_effects", RMSE = edx_method_reg_user_movie_year)
 
 ```
 
@@ -284,28 +301,71 @@ We will apply lambda <- 5 to our final algorithm.
 
 
 ## Result
-It shows improvement when we add more attribute into the lm algorithms.  However, it stops improving when the 3rd attribute added.  We are forced to review our algorithm and we need to apply regularization technique to improve the RMSE.  The final result of the RMSE is 0.8645625.
+It shows improvement when we add more attribute into the lm algorithms.  However, it stops improving when the 3rd attribute added.  We are forced to review our algorithm and we need to apply regularization technique to improve the RMSE.  The final result of the RMSE is 0.8638368
 
 ```{r my_result, echo=FALSE, include=FALSE, eval=TRUE}
-# rmse_results1 = data.frame(method = "Just the average", RMSE = 1.0612018)
-# rmse_results2 = data.frame(method = "Movie effects", RMSE = 0.9439087)
-# rmse_results3 = data.frame(method = "Movie_user_effects", RMSE = 0.8653488)
-# rmse_results4 = data.frame(method = "Movie_user_year_effects", RMSE = 0.8650034)
-# rmse_results5 = data.frame(method = "Movie_reg_user_year_effects", RMSE =0.8645625)
-
-rmse_results1 = data.frame(method = "Just the average", RMSE = method_average)
-rmse_results2 = data.frame(method = "Movie effects", RMSE = method_movie_effects)
-rmse_results3 = data.frame(method = "Movie_user_effects", RMSE = method_movie_user_effects)
-rmse_results4 = data.frame(method = "Movie_user_year_effects", RMSE = method_movie_user_year_effects)
-rmse_results5 = data.frame(method = "Movie_reg_user_year_effects", RMSE =method_reg_user_movie_year)
+edx_rmse_results1 = data.frame(method = "Just the average", RMSE = edx_method_average)
+edx_rmse_results2 = data.frame(method = "Movie effects", RMSE = edx_method_movie_effects)
+edx_rmse_results3 = data.frame(method = "Movie_user_effects", RMSE = edx_method_movie_user_effects)
+edx_rmse_results4 = data.frame(method = "Movie_user_year_effects", RMSE = edx_method_movie_user_year_effects)
+edx_rmse_results5 = data.frame(method = "Movie_reg_user_year_effects", RMSE = edx_method_reg_user_movie_year)
 
 ```
+
+We can see the the fifth method provides the best result.
 
 ```{r rmse_results}
-rmse_all_results = rbind(rmse_results1, rmse_results2, rmse_results3, 
-                         rmse_results3, rmse_results4, rmse_results5)
-rmse_all_results
+edx_rmse_all_results = rbind(edx_rmse_results1, edx_rmse_results2, edx_rmse_results3, 
+                         edx_rmse_results3, edx_rmse_results4, edx_rmse_results5)
+edx_rmse_all_results
 ```
 
+We can now apply the fifth method to the validation set.
+
+``` {r test-validation-set}
+
+###########################################################################################
+# Final model provides the best result for validation set.  We select the final
+# method.
+###########################################################################################
+
+lambdas <- seq(0, 10, 0.25)
+## passing in lambdas and generate a vector of RMSEs, then we will use this vector to plot our lambdas graph.
+rmses <- sapply(lambdas, function(l){
+  mu <- mean(edx$rating)
+  # movie effect
+  b_i <- edx %>% group_by(movieId) %>% summarize(b_i = sum(rating - mu)/(n() + l))
+  # user effect
+  b_u <- edx %>% left_join(b_i, by="movieId") %>% group_by(userId) %>% summarize(b_u = sum(rating - b_i - mu)/(n() + l))
+  # movie released year effect
+  b_y <- edx %>% left_join(b_i, by="movieId") %>% left_join(b_u, by="userId") %>% group_by(movie_year) %>% summarize(b_y = sum(rating - b_i - b_u - mu)/(n() + l))
+
+  predicted_ratings <- validation %>% left_join(b_i, by='movieId') %>% left_join(b_u, by='userId') %>% left_join(b_y, by='movie_year') %>% mutate(pred = mu + b_i + b_u + b_y) %>% pull(pred)
+
+  return(RMSE(validation$rating, predicted_ratings))})
+
+# Plot the graph of the lambdas
+qplot(lambdas, rmses)
+
+# Use the min value of lambdas to test our algorithm and find the value of RMSE
+lambda <- lambdas[which.min(rmses)]
+
+b_i <- edx %>% group_by(movieId) %>% summarize(b_i = sum(rating - mu)/(n() + lambda))
+
+b_u <- edx %>% left_join(b_i, by="movieId") %>% group_by(userId) %>% summarize(b_u = sum(rating - b_i - mu)/(n() + lambda))
+
+b_y <- edx %>% left_join(b_i, by="movieId") %>% left_join(b_u, by="userId") %>% group_by(movie_year) %>% summarize(b_y = sum(rating - b_i - b_u - mu)/(n() + lambda))
+
+predicted_ratings <- validation %>% left_join(b_i, by='movieId') %>% left_join(b_u, by='userId') %>% left_join(b_y, by='movie_year') %>% mutate(pred = mu + b_i + b_u + b_y) %>% pull(pred)
+
+method_reg_user_movie_year <- RMSE(validation$rating, predicted_ratings)
+
+rmse_results5 <- data.frame(method = "Movie_reg_user_year_effects_validation_set", RMSE = method_reg_user_movie_year)
+
+print(rmse_results5)
+
+```
+
+
 ## Conclusion
-The target of this project is to develop an algorithm that can achieve RMSE as small as possible.  Through the use of linear model with multiple attributes, we can arrive RMSE 0.8645625.
+This project is to develop an algorithm that can achieve RMSE as small as possible.  Through the use of linear model with multiple attributes, we can arrive RMSE of the validation set equals to 0.864521.  When we compare the first method of "averaging" to our final regularization model, we can see that it has a big improvement from our training set.

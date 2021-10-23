@@ -134,7 +134,6 @@ edx_graph %>% group_by(rating) %>% ggplot(aes(rating)) + geom_histogram(binwidth
 mu <- mean(edx_training_set$rating)
 
 # Generate RMSE result for edx_test_set
-RMSE(edx_test_set$rating, mu)
 edx_method_average <- RMSE(edx_test_set$rating, mu)
 edx_rmse_results1 <- data.frame(method = "Just the average", RMSE = edx_method_average)
 edx_rmse_results1
@@ -154,8 +153,8 @@ edx_rmse_results1
 
 ## Using average mean to predict and its RMSE.
 mu <- mean(edx_training_set$rating)
-edx_movie_avgs <- edx_training_set %>% group_by(movieId) %>% summarize(b_i = mean(rating-mu))
-edx_predicted_ratings <- mu + edx_test_set %>% left_join(edx_movie_avgs, by='movieId') %>% pull(b_i)
+movie_avgs <- edx_training_set %>% group_by(movieId) %>% summarize(b_i = mean(rating-mu))
+edx_predicted_ratings <- mu + edx_test_set %>% left_join(movie_avgs, by='movieId') %>% pull(b_i)
 
 edx_method_movie_effects <- RMSE(edx_test_set$rating, edx_predicted_ratings)
 edx_rmse_results2 <- data.frame(method = "Movie effects", RMSE = edx_method_movie_effects)
@@ -249,7 +248,7 @@ edx_rmse_results4 <- data.frame(method = "Movie_user_year_effects", RMSE = edx_m
 # rmse_results4 <- data.frame(method = "Movie_user_year_effects", RMSE = method_movie_user_year_effects)
 
 ###########################################################################################
-# Firth method we use just the average + movieId + userId + movie_year + 
+# Fifth method we use just the average + movieId + userId + movie_year + 
 #   Regularization of movielens dataset 
 #
 ###########################################################################################
@@ -331,8 +330,8 @@ edx_rmse_all_results = rbind(edx_rmse_results1, edx_rmse_results2, edx_rmse_resu
 edx_rmse_all_results
 
 ###########################################################################################
-# Final selection of methods result for validation set
-#
+# Final method (fifth model) provides the best result for validation set.  We 
+# select the final method.
 ###########################################################################################
 
 lambdas <- seq(0, 10, 0.25)
@@ -366,15 +365,9 @@ predicted_ratings <- validation %>% left_join(b_i, by='movieId') %>% left_join(b
 
 method_reg_user_movie_year <- RMSE(validation$rating, predicted_ratings)
 
-rmse_results5 <- data.frame(method = "Movie_reg_user_year_effects", RMSE = method_reg_user_movie_year)
+rmse_results5 <- data.frame(method = "Movie_reg_user_year_effects_validation_set", RMSE = method_reg_user_movie_year)
 
+print(rmse_results5)
 
-
-###########################################################################################
-# Generate all methods result for validation set for comparison
-#
-###########################################################################################
-# rmse_all_results = rbind(rmse_results1, rmse_results2, rmse_results3, rmse_results4, rmse_results5)
-# rmse_all_results
 
 
