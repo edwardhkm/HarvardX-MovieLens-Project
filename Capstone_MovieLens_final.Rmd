@@ -315,7 +315,7 @@ edx_rmse_results5 = data.frame(method = "Movie_reg_user_year_effects", RMSE = ed
 We can see the the fifth method provides the best result.
 
 ```{r rmse_results}
-edx_rmse_all_results = rbind(edx_rmse_results1, edx_rmse_results2, edx_rmse_results3, 
+edx_rmse_all_results = rbind(edx_rmse_results1, edx_rmse_results2, 
                          edx_rmse_results3, edx_rmse_results4, edx_rmse_results5)
 edx_rmse_all_results
 ```
