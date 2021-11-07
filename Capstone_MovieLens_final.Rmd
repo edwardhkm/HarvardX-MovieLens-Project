@@ -368,4 +368,4 @@ print(rmse_results5)
 
 
 ## Conclusion
-This project is to develop an algorithm that can achieve RMSE as small as possible.  Through the use of linear model with multiple attributes, we can arrive RMSE of the validation set equals to 0.864521.  When we compare the first method of "averaging" to our final regularization model, we can see that it has a big improvement from our training set.
+This project is to develop an algorithm that can achieve RMSE as small as possible.  Through the use of linear model with multiple attributes, we can arrive RMSE of the validation set equals to 0.864521.  When we compare the first method of "averaging" to our final regularization model, we can see that it has a great improvement of RMSE from our training set.  We should pick the fifth model as a final model for this project.
