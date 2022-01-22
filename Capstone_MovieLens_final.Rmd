@@ -3,7 +3,7 @@ title: |
     <Center>HarvardX: PH125.9x Data Science: Capstone course</Center>
     <Center>Capstone project MovieLens</Center>
 author: "Edward Ho"
-date: "2021/10/25"
+date: "2022/01/21"
 output: pdf_document
 ---
 
@@ -114,6 +114,8 @@ anyNA.data.frame(validation)
 ```
 
 anyNA returns false.  It shows that the dataset is clean.  However, the genres, timestamp and title columns contain hidden information that may further improve our algorithm.  It is the year of release and breakdown of genres.  Some minor data massage can be done on these fields.  
+
+According to the instruction of the project, the validation data set can only be use to test our developed algorithm at the end of the project.  The edx data set will therefore split into testing and training set to develop our algorithm.
 
 ```{r new_fields}
 edx <- edx %>% mutate(rating_time = as.POSIXct(timestamp, origin="1970-01-01"), 
